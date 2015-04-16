@@ -14,6 +14,20 @@ var game = function(){
 
 		.controls().touch();
 
+	//LOAD ANIMATIONS
+	//###############
+
+	Q.animations("mario_anim",{ //Animations for Mario
+		run: {frames: [0,1,2], rate: 1/50},
+		stand: { frames: [0], rate: 1/5 },
+		jump:{frames: [0,1], rate: 1/10, loop: false}
+	});
+
+	Q.animations("goomba_anim",{ //Animations for Goomba
+		move: {frames: [0,1], rate: 1/5},
+		die: {frames: [0], rate: 1/5, loop:false, trigger: "death_event"}
+	});
+
 	//LOAD FILES
 	//##########
 
@@ -21,11 +35,12 @@ var game = function(){
 	Q.loadTMX("level.tmx",function(){
 
 		//Load SpriteSheet
-		Q.load("mario_small.png, mario_small.json, bloopa.png, bloopa.json, goomba.png, goomba.json, princess.png, mainTitle.png", function() {
+		Q.load("mario_small.png, mario_small.json, bloopa.png, bloopa.json, goomba.png, goomba.json, princess.png, coin.png, coin.json, mainTitle.png", function() {
 
 			Q.compileSheets("mario_small.png","mario_small.json");
-			Q.compileSheets("bloopa.png","bloopa.json");
 			Q.compileSheets("goomba.png","goomba.json");
+			Q.compileSheets("bloopa.png","bloopa.json");
+			Q.compileSheets("coin.png","coin.json");
 
 
 			Q.stageScene("mainTitle");
@@ -42,16 +57,18 @@ var game = function(){
 		// You can call the parent's constructor with this._super(..)
 			this._super(p, {
 				sheet: "marioR", // Setting a sprite sheet sets sprite width and height
+				sprite: "mario_anim",
 				frame:0,
-				x: 150, // You can also set additional properties that can
-				y: 530, // be overridden on object creation
+				x: 0, // You can also set additional properties that can
+				y: 0 // be overridden on object creation
 			});
 
-			this.add('2d, platformerControls');
-
-			console.log(this.p.sheet);
+			this.add('2d, platformerControls, animation');
 
 			var mario = this;
+
+			/*
+			console.log(this.p.sheet);
 
 			Q.input.on("left", function(){
 				mario.p.sheet = "marioL";
@@ -59,16 +76,47 @@ var game = function(){
 
 			Q.input.on("right", function(){
 				mario.p.sheet = "marioR";
+				mario.play("run_right");
 			});
 
 			Q.input.on("up", function(){
 				mario.p.sheet = "marioJump";
+
+			});
+			*/
+
+			Q.input.on("up", function(){
+				mario.p.sheet = "marioJump";
+				mario.play("jump",0);
+
+				//console.log("Jump executed");
+			});
+
+			this.on("hit.landed",function(){
+				this.play("stand");
+				
 			});
 		},
 
 		step:function(dt){
 
 			//console.log(Q.height);
+
+			if(this.p.vx > 0){
+				this.p.sheet = "marioR";
+				this.play("run");
+			}
+			else if(this.p.vx < 0){
+				this.p.sheet = "marioL";
+				this.play("run")
+			}
+			else{
+
+				this.play("stand");
+				//this.play("stand_" + this.p.direction > 0 ? "right" : "left");
+			}
+
+			//Death if he falls
 
 			if(this.p.y > Q.height + 180){
 
@@ -90,8 +138,8 @@ var game = function(){
 			this._super(p, {
 				asset: "princess.png", // Setting a sprite sheet sets sprite width and height
 				frame:0,
-				x: 1000, // You can also set additional properties that can
-				y: 530, // be overridden on object creation
+				x: 0, // You can also set additional properties that can
+				y: 0, // be overridden on object creation
 			});
 
 			this.add('2d');
@@ -100,6 +148,7 @@ var game = function(){
 			this.on("hit", function(collision){
 
 				if(collision.obj.isA("Mario")){
+					collision.obj.del('platformerControls');
 					this.trigger("win");
 				}
 			});
@@ -119,14 +168,17 @@ var game = function(){
 
 			this._super(p, {
 				sheet: "goomba",
+				sprite: "goomba_anim",
 				frame:0,
-				x:300,
-				y: 520,
+				x:0,
+				y: 0,
 				vx: 100
 			});
 
 
-			this.add('2d, aiBounce');
+			this.add('2d, aiBounce, animation');
+
+			this.play("move");
 
 			this.on("bump.top", function(collision){
 
@@ -136,7 +188,10 @@ var game = function(){
 
 					//console.log("Mario collision detected");
 
-					this.destroy();
+					this.p.sheet = "goombaDie";
+					//console.log("Playimg death");
+					this.play("die");
+					collision.obj.p.vy = -300;
 				}
 
 			});
@@ -154,6 +209,10 @@ var game = function(){
 				}
 
 			});
+
+			this.on("death_event", function(){
+				this.destroy();
+			});
 		}
 	});
 
@@ -165,8 +224,8 @@ var game = function(){
 			this._super(p, {
 				sheet: "bloopa",
 				frame:0,
-				x:600,
-				y: 200
+				x:0,
+				y: 0
 			});
 
 
@@ -183,6 +242,7 @@ var game = function(){
 					//console.log("Mario collision detected");
 
 					this.destroy();
+					collision.obj.p.vy = -300;
 				}
 
 			});
@@ -217,6 +277,37 @@ var game = function(){
 
 	});
 
+	Q.Sprite.extend("Coin",{
+
+		init: function(p){
+
+			this._super(p, {
+				sheet: "coin",
+				frame:0,
+				x:0,
+				y: 0,
+				hit: false
+			});
+
+			this.add("tween");
+
+
+			this.on("hit", function(collision){
+
+				if(collision.obj.isA("Mario")&&(!this.p.hit)){
+
+					this.p.hit = true;
+
+					Q.state.inc("score",10);
+
+					this.animate({y: this.p.y - 50},0.5, Q.Easing.Linear, {callback: function(){ this.destroy() } 
+					}); 
+				}
+			});
+		}
+
+	});
+
 	//SCENES
 	//######
 
@@ -227,18 +318,24 @@ var game = function(){
 		Q.stageTMX("level.tmx",stage);
 
 		//Load Mario
-		var mario = stage.insert(new Q.Mario());
+		var mario = stage.insert(new Q.Mario({x:150,y:530}));
 
 		//Load Enemies
 		//var bloopa = stage.insert(new Q.Bloopa());
-		var goomba = stage.insert(new Q.Goomba());
-		var bloopa = stage.insert(new Q.Bloopa());
+		var goomba = stage.insert(new Q.Goomba({x:300,y:520}));
+		var bloopa = stage.insert(new Q.Bloopa({x:600,y:200}));
 
 		//Load Princess
-		var princess = stage.insert(new Q.Princess());
+		var princess = stage.insert(new Q.Princess({x:1000,y:530}));
+
+		//Load Coins
+		var coin1 = stage.insert(new Q.Coin({x:230,y:430}));
+
+		var coin2 = stage.insert(new Q.Coin({x:400,y:460}));
 
 		//Load View Following Mario
-		stage.add("viewport").follow(mario);
+		stage.add("viewport").follow(mario,{x:true,y:false});
+		stage.centerOn(150,365);
 
 		//,{x:true,y:true}
 
@@ -273,6 +370,8 @@ var game = function(){
 		// Listener
 		button.on("click",function() {
 			Q.clearStages();
+
+			Q.state.reset({ score: 0});
 			Q.stageScene('level1');
 		});
 
@@ -301,10 +400,45 @@ var game = function(){
 		Q.input.on("confirm",this,function(){
 			Q.clearStages();
 			Q.stageScene('level1');
+			Q.stageScene('HUD',1);
 			stage.destroy();
 		});
 
 	});
+
+	//Score Text
+
+	Q.UI.Text.extend("Score",{
+
+		init: function(p) {
+			this._super({
+				label: "Score: 0",
+				x: 70,
+				y: 0
+			});
+
+			Q.state.on("change.score",this,"score");
+		},
+
+		score: function(score) {
+			this.p.label = "Score: " + score;
+		}
+	});
+
+	//HUD
+
+	Q.scene('HUD',function(stage) {
+
+		var container = stage.insert(new Q.UI.Container({
+			x: 0, y: 0
+		}));
+
+		var label = container.insert(new Q.Score());
+
+		//Set to 0 before inc
+		Q.state.set("score",0); 
+	});
+
 };
 
 
