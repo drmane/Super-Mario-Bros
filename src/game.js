@@ -19,13 +19,18 @@ var game = function(){
 
 	Q.animations("mario_anim",{ //Animations for Mario
 		run: {frames: [0,1,2], rate: 1/50},
-		stand: { frames: [0], rate: 1/5 },
-		jump:{frames: [0,1], rate: 1/10, loop: false}
+		stand: { frames: [0], rate: 1/50 },
+		jump: { frames: [0], rate: 1/50, loop: false}
 	});
 
 	Q.animations("goomba_anim",{ //Animations for Goomba
 		move: {frames: [0,1], rate: 1/5},
 		die: {frames: [0], rate: 1/5, loop:false, trigger: "death_event"}
+	});
+
+	Q.animations("bloopa_anim",{ //Animations for Goomba
+		move: {frames: [0,1], rate: 1/5},
+		die: {frames: [0], rate: 1/2, loop:false, trigger: "death_event"}
 	});
 
 	//LOAD FILES
@@ -60,49 +65,61 @@ var game = function(){
 				sprite: "mario_anim",
 				frame:0,
 				x: 0, // You can also set additional properties that can
-				y: 0 // be overridden on object creation
+				y: 0, // be overridden on object creation
+				jumpSpeed: -500
 			});
 
-			this.add('2d, platformerControls, animation');
+			this.add('2d, platformerControls, animation, tween');
 
 			var mario = this;
 
+			//Jump Animation
+
 			/*
-			console.log(this.p.sheet);
-
-			Q.input.on("left", function(){
-				mario.p.sheet = "marioL";
-			});
-
-			Q.input.on("right", function(){
-				mario.p.sheet = "marioR";
-				mario.play("run_right");
-			});
-
 			Q.input.on("up", function(){
-				mario.p.sheet = "marioJump";
 
-			});
-			*/
+				console.log("Event detected");
 
-			Q.input.on("up", function(){
-				mario.p.sheet = "marioJump";
-				mario.play("jump",0);
+				if(mario.p.direction == "right" ){
+					mario.p.sheet = "marioJump";
+
+					console.log("Jump executed" + mario.p.vx);
+				}
 
 				//console.log("Jump executed");
 			});
 
-			this.on("hit.landed",function(){
-				this.play("stand");
-				
+			Q.input.on("left"), function(){
+
+				console.log("Event detected");
+
+				if(mario.p.direction == "right" ){
+					mario.p.sheet = "marioJump";
+
+					console.log("Jump executed" + mario.p.vx);
+				}
+
+				//console.log("Jump executed");
 			});
+*/
 		},
 
 		step:function(dt){
 
 			//console.log(Q.height);
 
-			if(this.p.vx > 0){
+			if(this.p.vy != 0){
+
+				if(this.p.direction == "right" ){
+					this.p.sheet = "marioJumpR";
+				}
+				else if(this.p.direction == "left" ){
+					this.p.sheet = "marioJumpL";
+				}
+
+				this.play("jump",1);
+			}
+			else if(this.p.vx > 0){
 				this.p.sheet = "marioR";
 				this.play("run");
 			}
@@ -110,11 +127,16 @@ var game = function(){
 				this.p.sheet = "marioL";
 				this.play("run")
 			}
-			else{
-
+			else if(this.p.direction == "right" ){
+				this.p.sheet = "marioR";
 				this.play("stand");
-				//this.play("stand_" + this.p.direction > 0 ? "right" : "left");
 			}
+			else if(this.p.direction == "left" ){
+				this.p.sheet = "marioL";
+				this.play("stand");
+			}
+				//this.play("stand_" + this.p.direction > 0 ? "right" : "left");
+			
 
 			//Death if he falls
 
@@ -127,8 +149,17 @@ var game = function(){
 			}
 
 
-		}
+		},
 
+		die: function(){
+
+			this.p.sheet = "marioDie";
+
+			this.del('platformerControls');
+
+			this.animate({y: this.p.y - 50, angle:360},0.5, Q.Easing.Linear, {callback: function(){ this.destroy() } });
+		
+		}
 	});
 
 	Q.Sprite.extend("Princess",{
@@ -204,7 +235,7 @@ var game = function(){
 
 					//console.log("Mario collision detected");
 
-					collision.obj.destroy();
+					//collision.obj.die();
 					Q.stageScene("gameStatusChange",1, { label: "You Died" });
 				}
 
@@ -223,13 +254,16 @@ var game = function(){
 
 			this._super(p, {
 				sheet: "bloopa",
+				sprite: "bloopa_anim",
 				frame:0,
 				x:0,
 				y: 0
 			});
 
 
-			this.add('2d');
+			this.add('2d, animation');
+
+			this.play("move");
 
 			//Collision with player
 
@@ -241,7 +275,10 @@ var game = function(){
 
 					//console.log("Mario collision detected");
 
-					this.destroy();
+					this.p.sheet = "bloopaDie";
+					//console.log("Playimg death");
+					this.play("die");
+
 					collision.obj.p.vy = -300;
 				}
 
@@ -262,12 +299,16 @@ var game = function(){
 
 			});
 
+			this.on("death_event", function(){
+				this.destroy();
+			});
+
 
 			this.on("hit", function(collision){
 
 				if(!collision.obj.isA("Mario")){
 					//-500 by default
-					this.p.vy = -600;
+					this.p.vy = -500;
 
 					//console.log("collision detected, v= " + this.p.vy);
 				}
@@ -286,7 +327,11 @@ var game = function(){
 				frame:0,
 				x:0,
 				y: 0,
-				hit: false
+				z:-1,
+				angle:0,
+				hit: false,
+				gravity: 0,
+				sensor:true
 			});
 
 			this.add("tween");
@@ -300,7 +345,7 @@ var game = function(){
 
 					Q.state.inc("score",10);
 
-					this.animate({y: this.p.y - 50},0.5, Q.Easing.Linear, {callback: function(){ this.destroy() } 
+					this.animate({y: this.p.y - 50, angle:360},0.2, Q.Easing.Linear, {callback: function(){ this.destroy() } 
 					}); 
 				}
 			});
@@ -323,15 +368,26 @@ var game = function(){
 		//Load Enemies
 		//var bloopa = stage.insert(new Q.Bloopa());
 		var goomba = stage.insert(new Q.Goomba({x:300,y:520}));
-		var bloopa = stage.insert(new Q.Bloopa({x:600,y:200}));
+		var bloopa = stage.insert(new Q.Bloopa({x:580,y:200}));
 
 		//Load Princess
 		var princess = stage.insert(new Q.Princess({x:1000,y:530}));
 
 		//Load Coins
-		var coin1 = stage.insert(new Q.Coin({x:230,y:430}));
+		stage.insert(new Q.Coin({x:630,y:460}));
+		stage.insert(new Q.Coin({x:660,y:460}));
+		stage.insert(new Q.Coin({x:690,y:460}));
+		stage.insert(new Q.Coin({x:720,y:460}));
+		stage.insert(new Q.Coin({x:750,y:460}));
+		stage.insert(new Q.Coin({x:780,y:460}));
 
-		var coin2 = stage.insert(new Q.Coin({x:400,y:460}));
+		stage.insert(new Q.Coin({x:630,y:500}));
+		stage.insert(new Q.Coin({x:660,y:500}));
+		stage.insert(new Q.Coin({x:690,y:500}));
+		stage.insert(new Q.Coin({x:720,y:500}));
+		stage.insert(new Q.Coin({x:750,y:500}));
+		stage.insert(new Q.Coin({x:780,y:500}));
+
 
 		//Load View Following Mario
 		stage.add("viewport").follow(mario,{x:true,y:false});
