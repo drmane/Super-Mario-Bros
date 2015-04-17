@@ -6,19 +6,19 @@ var game = function(){
 
 	
 	//Instantiate Quintus
-	var Q = window.Q = Quintus()
+	var Q = window.Q = Quintus({audioSupported: ['ogg']})
 
-		.include("Sprites, Scenes, Input, 2D, Anim, Touch, UI, TMX")
+		.include("Sprites, Scenes, Input, 2D, Anim, Touch, UI, TMX, Audio")
 
 		.setup()
 
-		.controls().touch();
+		.controls().touch().enableSound();
 
 	//LOAD ANIMATIONS
 	//###############
 
 	Q.animations("mario_anim",{ //Animations for Mario
-		run: {frames: [0,1,2], rate: 1/50},
+		run: {frames: [0,1,2], rate: 1/10},
 		stand: { frames: [0], rate: 1/50 },
 		jump: { frames: [0], rate: 1/50, loop: false}
 	});
@@ -40,7 +40,7 @@ var game = function(){
 	Q.loadTMX("level.tmx",function(){
 
 		//Load SpriteSheet
-		Q.load("mario_small.png, mario_small.json, bloopa.png, bloopa.json, goomba.png, goomba.json, princess.png, coin.png, coin.json, mainTitle.png", function() {
+		Q.load("mario_small.png, mario_small.json, bloopa.png, bloopa.json, goomba.png, goomba.json, princess.png, coin.png, coin.json, mainTitle.png, music_main.ogg, music_level_complete.ogg, bump.ogg, jump.ogg, coin.ogg", function() {
 
 			Q.compileSheets("mario_small.png","mario_small.json");
 			Q.compileSheets("goomba.png","goomba.json");
@@ -102,12 +102,14 @@ var game = function(){
 				//console.log("Jump executed");
 			});
 */
+
 		},
 
 		step:function(dt){
 
 			//console.log(Q.height);
 
+			
 			if(this.p.vy != 0){
 
 				if(this.p.direction == "right" ){
@@ -118,6 +120,7 @@ var game = function(){
 				}
 
 				this.play("jump",1);
+				Q.audio.play("jump.ogg");
 			}
 			else if(this.p.vx > 0){
 				this.p.sheet = "marioR";
@@ -180,6 +183,8 @@ var game = function(){
 
 				if(collision.obj.isA("Mario")){
 					collision.obj.del('platformerControls');
+					Q.audio.stop();
+					Q.audio.play('music_level_complete.ogg');
 					this.trigger("win");
 				}
 			});
@@ -222,6 +227,7 @@ var game = function(){
 					this.p.sheet = "goombaDie";
 					//console.log("Playimg death");
 					this.play("die");
+					Q.audio.play('bump.ogg');
 					collision.obj.p.vy = -300;
 				}
 
@@ -278,6 +284,7 @@ var game = function(){
 					this.p.sheet = "bloopaDie";
 					//console.log("Playimg death");
 					this.play("die");
+					Q.audio.play('bump.ogg');
 
 					collision.obj.p.vy = -300;
 				}
@@ -345,6 +352,8 @@ var game = function(){
 
 					Q.state.inc("score",10);
 
+					Q.audio.play('coin.ogg');
+
 					this.animate({y: this.p.y - 50, angle:360},0.2, Q.Easing.Linear, {callback: function(){ this.destroy() } 
 					}); 
 				}
@@ -362,8 +371,12 @@ var game = function(){
 		//Put the TMX file on the scene
 		Q.stageTMX("level.tmx",stage);
 
+		//Play music
+		Q.audio.stop();
+		Q.audio.play("music_main.ogg",{loop:true});
+
 		//Load Mario
-		var mario = stage.insert(new Q.Mario({x:150,y:530}));
+		var mario = stage.insert(new Q.Mario({x:150,y:510}));
 
 		//Load Enemies
 		//var bloopa = stage.insert(new Q.Bloopa());
@@ -469,7 +482,7 @@ var game = function(){
 		init: function(p) {
 			this._super({
 				label: "Score: 0",
-				x: 70,
+				x: 75,
 				y: 0
 			});
 
