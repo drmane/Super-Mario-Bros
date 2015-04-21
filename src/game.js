@@ -444,7 +444,11 @@ var game = function(){
 			Q.stageScene("level1");
 			Q.stageScene("HUD",1);
 
-			Q.state.reset({ score: 0, lives:3});
+			//Set to 0 before inc
+			Q.state.set("score",0); 
+
+			//Set to 0 before inc
+			Q.state.set("lives",3);
 		});
 
 		// Expand the container to visibily fit it"s contents

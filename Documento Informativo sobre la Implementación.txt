@@ -1,0 +1,12 @@
+Práctica realizada por:
+
+Nombre: Daniel Ruiz Manero
+DNI: 71299479P
+
+Elementos Implementados:
+
+* Apartado Desarrollo de la Práctica: Todos los elementos indicados en el enunciado.
+* Mejoras:
+
+	- Sonidos
+	- Vidas
