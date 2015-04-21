@@ -162,20 +162,32 @@ var game = function(){
 				//console.log(Q.height);
 
 				this.prepareDeath();
-				Q.stageScene("gameStatusChange",1, { label: "You Died" });
 			}
 
 			if(this.p.death){
+
 				this.p.sheet = "marioDie";
 
-				this.del("platformerControls");
+				this.animate({y: this.p.y - 50},0.5, Q.Easing.Linear, {callback: function(){ 
 
-				this.animate({y: this.p.y - 50},0.5, Q.Easing.Linear, {callback: function(){ this.destroy() } });
+					this.destroy();
+
+					Q.state.dec("lives",1);
+
+					if(Q.state.get("lives") == 0){
+							Q.stageScene("gameStatusChange",1, { label: "You Died" });
+					}
+					else{
+						Q.stageScene("level1");
+					}
+				}});
 			}
 
 		},
 
 		prepareDeath: function(){
+			this.del("platformerControls");
+
 			Q.audio.stop();
 			Q.audio.play("music_die.ogg");
 			this.p.death = true;
@@ -280,6 +292,9 @@ var game = function(){
 				if(collision.obj.isA("Mario")){
 
 					//console.log("Playimg death");
+
+					Q.state.inc("score",10);
+
 					this.play("die");
 					Q.audio.play("bump.ogg");
 
@@ -297,7 +312,6 @@ var game = function(){
 					//console.log("Mario collision detected");
 
 					collision.obj.prepareDeath();
-					Q.stageScene("gameStatusChange",1, { label: "You Died" });
 
 				}
 
@@ -427,8 +441,10 @@ var game = function(){
 		button.on("click",function() {
 			Q.clearStages();
 
-			Q.state.reset({ score: 0});
 			Q.stageScene("level1");
+			Q.stageScene("HUD",1);
+
+			Q.state.reset({ score: 0, lives:3});
 		});
 
 		// Expand the container to visibily fit it"s contents
@@ -450,6 +466,15 @@ var game = function(){
 		button.on("click",function() {
 			Q.clearStages();
 			Q.stageScene("level1");
+			Q.stageScene("HUD",1);
+
+			//Set to 0 before inc
+			Q.state.set("score",0); 
+
+			//Set to 0 before inc
+			Q.state.set("lives",3);
+
+			stage.destroy();
 		});
 
 		//Enter Listener
@@ -457,6 +482,13 @@ var game = function(){
 			Q.clearStages();
 			Q.stageScene("level1");
 			Q.stageScene("HUD",1);
+
+			//Set to 0 before inc
+			Q.state.set("score",0); 
+
+			//Set to 0 before inc
+			Q.state.set("lives",3);
+
 			stage.destroy();
 		});
 
@@ -469,7 +501,7 @@ var game = function(){
 		init: function(p) {
 			this._super({
 				label: "Score: 0",
-				x: 75,
+				x: 70,
 				y: 0
 			});
 
@@ -481,6 +513,23 @@ var game = function(){
 		}
 	});
 
+	Q.UI.Text.extend("Lives",{
+
+		init: function(p) {
+			this._super({
+				label: "x0",
+				x: 290,
+				y: 0
+			});
+
+			Q.state.on("change.lives",this,"lives");
+		},
+
+		lives: function(lives) {
+			this.p.label = "x" + lives;
+		}
+	});
+
 	//HUD
 
 	Q.scene("HUD",function(stage) {
@@ -489,10 +538,10 @@ var game = function(){
 			x: 0, y: 0
 		}));
 
-		var label = container.insert(new Q.Score());
+		var score = container.insert(new Q.Score());
 
-		//Set to 0 before inc
-		Q.state.set("score",0); 
+		var lives = container.insert(new Q.Lives());
+
 	});
 
 };
